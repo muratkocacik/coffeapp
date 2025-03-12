@@ -4,141 +4,130 @@ struct ContentView: View {
     // Kahve seçenekleri
     let coffeeOptions = ["Espresso", "Latte", "Cappuccino", "Americano", "Macchiato"]
     
-    // Son seçilen kahve (sadece gösterim için)
     @State private var selectedCoffee: String? = nil
-    // Sepet: Aynı kahve birden fazla eklenebilir
     @State private var cart: [String] = []
-    // Gösterilecek mesaj metni (ekleme veya çıkarma mesajı)
     @State private var messageText: String = ""
-    // Mesajın ekranda görünüp görünmeyeceğini kontrol eden state
     @State private var showMessage: Bool = false
-
-    // Sepetteki öğeleri gruplandırarak her ürünün adedini hesaplayan computed property
+    
+    // Sepeti gruplandırma
     var groupedCart: [(key: String, count: Int)] {
         let groups = Dictionary(grouping: cart, by: { $0 })
         return groups.map { (key: $0.key, count: $0.value.count) }
-                     .sorted { $0.key < $1.key }
+            .sorted { $0.key < $1.key }
     }
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Sabit bir mesaj alanı (40 puan yüksekliğinde)
-                VStack {
-                    if showMessage {
-                        Text(messageText)
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding(8)
-                            .background(messageText == "Sepetten çıkarıldı!" ? Color.red.opacity(0.8) : Color.green.opacity(0.8))
-                            .cornerRadius(8)
-                            .frame(maxWidth: 250)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-                .frame(height: 40)
-                .animation(.easeInOut, value: showMessage)
                 
-                Spacer().frame(height: 10)
-                
-                // Ana içerik
-                Text("Lütfen bir kahve seçin:")
-                    .font(.title)
-                    .padding(.horizontal)
-                
-                List(coffeeOptions, id: \.self) { coffee in
-                    HStack {
-                        Text(coffee)
-                            .font(.headline)
-                        if selectedCoffee == coffee {
-                            Spacer()
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedCoffee = coffee
-                        // Aynı kahve birden çok kez eklenebilir
-                        cart.append(coffee)
-                        
-                        // Mesajı göster: "Sepete eklendi!"
-                        withAnimation {
-                            messageText = "Sepete eklendi!"
-                            showMessage = true
-                        }
-                        // 2 saniye sonra mesajı gizle
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            withAnimation {
-                                showMessage = false
-                            }
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-                .listStyle(PlainListStyle())
-                
-                if let selectedCoffee = selectedCoffee {
-                    Text("Seçilen kahve: \(selectedCoffee)")
-                        .padding()
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                }
-                
-                if cart.isEmpty {
-                    Text("Sepetiniz boş.")
-                        .padding()
+                // Dinamik Mesaj Alanı
+                if showMessage {
+                    Text(messageText)
                         .font(.headline)
-                } else {
-                    VStack(alignment: .leading) {
-                        Text("Sepetinizdeki kahveler:")
-                            .font(.title2)
-                            .padding(.bottom, 4)
-                        ForEach(groupedCart, id: \.key) { item in
-                            HStack {
-                                Text("\(item.key) x\(item.count)")
-                                    .font(.headline)
-                                Spacer()
-                                Button(action: {
-                                    removeItem(item.key)
-                                }) {
-                                    Image(systemName: "minus.circle")
-                                        .foregroundColor(.red)
-                                }
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(messageText == "Sepetten çıkarıldı!" ? Color.red.opacity(0.9) : Color.green.opacity(0.9))
+                        .cornerRadius(12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .animation(.easeInOut, value: showMessage)
+                }
+                
+                // Başlık
+                Text("Favori Kahveni Seç!")
+                .font(.title2)
+                    .fontWeight(.bold)
+                    .padding(.top, 20)
+                
+                // Kahve Seçenekleri Kartları
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ForEach(coffeeOptions, id: \.self) { coffee in
+                            CoffeeCardView(coffee: coffee, isSelected: coffee == selectedCoffee) {
+                                selectCoffee(coffee)
                             }
-                            .padding(.vertical, 4)
                         }
                     }
-                    .padding()
+                    .padding(.horizontal)
                 }
                 
                 Spacer()
-
-                // Sepete eklenen ürünlerle ödeme ekranına geçiş
-                NavigationLink(destination: PaymentView(cart: cart)) {
-                    Text("Ödeme Ekranına Geç")
-                        .font(.title2)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal)
+                
+                // Sepet Görünümü
+                if cart.isEmpty {
+                    VStack {
+                        Image(systemName: "cart")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.gray)
+                        Text("Sepetiniz boş.")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                    }
+                    .padding()
+                } else {
+                    VStack(alignment: .leading) {
+                        Text("Sepetiniz:")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .padding(.bottom, 8)
+                        
+                        ForEach(groupedCart, id: \.key) { item in
+                            CartItemView(item: item, onRemove: removeItem)
+                        }
+                    }
+                    .padding(.horizontal)
                 }
-                .padding(.top, 20)
+                
+                // Ödeme Ekranına Geçiş Butonu
+                if !cart.isEmpty {
+                    NavigationLink(destination: PaymentScreen(cart: cart)) {
+                        Text("Ödeme Ekranına Geç")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                            .shadow(radius: 5)
+                    }
+                    .padding(.vertical, 20)
+                    .padding(.horizontal)
+                }
             }
             .navigationTitle("Kahve Seçimi")
         }
     }
     
-    // Belirtilen üründen sepetteki ilk öğeyi kaldırır ve "Sepetten çıkarıldı!" mesajını gösterir
-    func removeItem(_ product: String) {
+    // Kahve Seçme İşlevi
+    private func selectCoffee(_ coffee: String) {
+        selectedCoffee = coffee
+        cart.append(coffee)
+        
+        // Mesajı göster
+        withAnimation {
+            messageText = "Sepete eklendi!"
+            showMessage = true
+        }
+        
+        // Mesajı 2 saniye sonra gizle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation {
+                showMessage = false
+            }
+        }
+    }
+    
+    // Sepetten Ürün Kaldırma İşlevi
+    private func removeItem(_ product: String) {
         if let index = cart.firstIndex(of: product) {
             cart.remove(at: index)
+            
             withAnimation {
                 messageText = "Sepetten çıkarıldı!"
                 showMessage = true
             }
+            
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 withAnimation {
                     showMessage = false
@@ -148,6 +137,97 @@ struct ContentView: View {
     }
 }
 
+// Kahve Kart Görünümü
+struct CoffeeCardView: View {
+    let coffee: String
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    // Kahveye göre uygun ikonu belirleme
+    private func coffeeIcon(for coffee: String) -> String {
+        switch coffee {
+        case "Espresso": return "cup.and.saucer.fill"
+        case "Latte": return "mug.fill"
+        case "Cappuccino": return "cloud.fill"
+        case "Americano": return "drop.fill"
+        case "Macchiato": return "leaf.fill"
+        default: return "questionmark.circle"
+        }
+    }
+    
+    var body: some View {
+        HStack {
+            Image(systemName: coffeeIcon(for: coffee))
+                .foregroundColor(.brown)
+                .font(.title2)
+            
+            Text(coffee)
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .shadow(color: .gray.opacity(0.3), radius: 5, x: 0, y: 5)
+        .onTapGesture(perform: onTap)
+        .animation(.easeInOut(duration: 0.3), value: isSelected)
+    }
+}
+// Sepet Öğesi Görünümü
+struct CartItemView: View {
+    let item: (key: String, count: Int)
+    let onRemove: (String) -> Void
+    
+    var body: some View {
+        HStack {
+            Text("\(item.key) x\(item.count)")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Button(action: {
+                onRemove(item.key)
+            }) {
+                Image(systemName: "minus.circle.fill")
+                    .foregroundColor(.red)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray5))
+        .cornerRadius(10)
+        .shadow(radius: 3)
+        .transition(.slide)
+    }
+}
+
+// ✅ Ödeme Görünümü (Hatalı olan `CheckoutView` yerine `PaymentScreen` adını kullanıyoruz)
+struct PaymentScreen: View {
+    let cart: [String]
+    
+    var body: some View {
+        VStack {
+            Text("Ödeme Ekranı")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .padding()
+            
+            List(cart, id: \.self) { coffee in
+                Text(coffee)
+            }
+        }
+    }
+}
+
+// Önizleme
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()

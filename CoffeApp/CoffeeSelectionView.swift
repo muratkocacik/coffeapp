@@ -19,7 +19,7 @@ struct CoffeeSelectionView: View {
         Coffee(name: "Espresso", price: 20.0),
         Coffee(name: "Latte", price: 25.0),
         Coffee(name: "Cappuccino", price: 22.0),
-        Coffee(name: "Americano", price: 18.0)
+        Coffee(name: "murat", price: 18.0)
     ]
     
     var body: some View {
